@@ -1,0 +1,22 @@
+[
+  {
+    "date": "28 Sep 2026, 23:44",
+    "problem": "What caused the database connection failures after the latest deployment, and what steps can be taken to identify and prevent the issue from happening again?",
+    "resolution": "What's probably wrong: The new deployment likely changed the database connection\u2011pool settings or introduced a leak, causing the pool (the limit on how many simultaneous DB connections) to run out.\n\nWhat to do:  \n1. Compare the current deployment\u2019s pool configuration (max\u2011connections, idle\u2011timeout) with the previous working version and revert any unintended changes.  \n2. Restart the affected services to clear any stuck connections and watch the pool usage (e.g., via your monitoring dashboard) to see if it fills up again.  \n3. If the pool still reaches its limit, increase the max\u2011connections or shorten the idle\u2011timeout, and add health\u2011check/monitoring alerts to catch future exhaustion early.\n\nWhy we think so: Similar pool\u2011exhaustion problems occurred in auth\u2011service and payment\u2011service on\u202f2026\u201109\u201105 and\u202f2026\u201109\u201103, and fixing the pool settings and restarting the services resolved those incidents."
+  },
+  {
+    "date": "28 Sep 2026, 23:48",
+    "problem": "the invoice PDF generator is crashing with out of memory errors",
+    "resolution": "What's probably wrong: The PDF generator is running out of memory, likely because it\u2019s keeping large data in memory or has a memory leak.\n\nWhat to do:\n1. Restart the PDF generator service (or its container) to clear the current memory usage.  \n2. Review any recent code changes that affect PDF creation (e.g., new fields, bigger images) and check whether objects are being released after the PDF is written.  \n3. If the crash comes back, raise the memory limit for the service or add a quick fix that explicitly frees the buffers after each PDF is produced.\n\nWhy we think so: We\u2019ve seen the same out\u2011of\u2011memory pattern in the payment\u2011service on\u202f2026\u201109\u201103 and the inventory\u2011service on\u202f2026\u201109\u201105; both were caused by code that didn\u2019t release memory and were fixed by a restart plus a patch to clean up buffers."
+  },
+  {
+    "date": "28 Sep 2026, 23:50",
+    "problem": "users can't log in, gateway timeout on the login endpoint",
+    "resolution": "What's probably wrong:  \nThe login service (auth\u2011service) is likely running out of database connections, causing the 504 Gateway Timeout.\n\nWhat to do:  \n1. Restart the auth\u2011service (or its pod/container) to clear any stuck connections.  \n2. Check the database connection\u2011pool settings for auth\u2011service; raise the max\u2011connections limit if it is low.  \n3. Redeploy the auth\u2011service with the updated pool settings and monitor the login endpoint.\n\nWhy we think so:  \nSeveral recent incidents (auth\u2011service on\u202f2026\u201109\u201105,\u202f2026\u201109\u201107, and checkout\u2011api on\u202f2026\u201109\u201107) showed the same 504 timeout caused by a saturated database connection pool, and expanding the pool and redeploying fixed the problem."
+  },
+  {
+    "date": "28 Sep 2026, 23:50",
+    "problem": "PDF export keeps running out of memory",
+    "resolution": "What's probably wrong: The PDF generator is using too much memory, likely because it\u2019s loading the whole document (or many invoices) into memory at once or has a memory\u2011leak bug.\n\nWhat to do:\n1. Restart the PDF service/pod to clear any leaked memory.  \n2. Check if the export is trying to create a very large PDF (many pages or high\u2011resolution images); if so, split the job into smaller batches or lower the image quality.  \n3. If the problem persists, apply the recent fix that added streaming (writes the PDF out piece\u2011by\u2011piece) or roll back to the version used before 2026\u201109\u201128 when the memory\u2011leak was fixed.\n\nWhy we think so: The invoice PDF generator crashed with the same out\u2011of\u2011memory error on 2026\u201109\u201128, and restarting or fixing the memory\u2011leak resolved it then. This pattern matches the current symptom."
+  }
+]
